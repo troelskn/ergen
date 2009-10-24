@@ -3,13 +3,23 @@ class Entity
   attr_reader :label, :attributes
   def initialize(label, attributes = [])
     @label = label
-    @attributes = attributes
+    @attributes = attributes.map{|a| Attribute.new(a, @label)}
   end
-  def [](key)
-    @attributes[key]
+end
+
+class Attribute
+  def initialize(label, owner)
+    @label = label
+    @owner = owner
   end
-  def []=(key, value)
-    @attributes[key] = value
+  def label
+    @label.gsub(/^[+]{1}/, "")
+  end
+  def name
+    [@owner, self.label].join("-")
+  end
+  def primary?
+    @label.match(/^[+]{1}/)
   end
 end
 
@@ -65,16 +75,19 @@ def write_graph(graph, style)
   puts ""
   puts "  // attributes"
   graph.each do |e|
-    e.attributes.each do |a|
-      puts "  " + quote([e.label, a].join("-")) + " [label=#{quote(a)},#{style[:attribute]}];"
+    e.attributes.each do |attr|
+      if attr.primary?
+        puts "  " + quote(attr.name) + " [label=#{quote(attr.label)},#{style[:attribute_primary]}];"
+      else
+        puts "  " + quote(attr.name) + " [label=#{quote(attr.label)},#{style[:attribute]}];"
+      end
     end
   end
   puts ""
   puts "  // edges"
   graph.each do |entity|
-    entity.attributes.each do |attribute|
-      attr_name = [entity.label, attribute].join("-")
-      puts "  #{quote(attr_name)} -- #{quote(entity.label)} [#{style[:edge]}];"
+    entity.attributes.each do |attr|
+      puts "  #{quote(attr.name)} -- #{quote(entity.label)} [#{style[:edge]}];"
     end
     if entity.respond_to? :edges
       entity.edges.each do |edge|
@@ -138,11 +151,13 @@ def build_graph(tokens)
   graph
 end
 
+# font: helvetica, helvetica-bold, helvetica-oblique
 style = {
-  :entity => "shape=box,fontsize=12",
-  :attribute => "shape=ellipse,fontsize=8",
-  :relation => "shape=diamond,style=filled,color=lightgrey,fontsize=12",
-  :edge => "len=1.00,fontsize=8"
+  :entity => "shape=box,fontname=helvetica,fontsize=12",
+  :attribute => "shape=ellipse,fontname=helvetica,fontsize=8",
+  :attribute_primary => "shape=ellipse,fontname=\"helvetica-oblique\",fontsize=8",
+  :relation => "shape=diamond,style=filled,color=lightgrey,fontname=helvetica,fontsize=12",
+  :edge => "len=1.00,fontname=helvetica,fontsize=8"
 }
 g = build_graph(tokenize(STDIN.read))
 write_graph(g, style)

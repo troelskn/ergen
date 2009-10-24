@@ -1,9 +1,9 @@
 course:
-  name, code
+  name, +code
 institute:
-  name
+  +name
 student:
-  name, grade, number
+  +name, grade, number
 
 C-I:
   foobar
