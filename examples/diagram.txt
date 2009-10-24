@@ -1,0 +1,18 @@
+course:
+  name, code
+institute:
+  name
+student:
+  name, grade, number
+
+C-I:
+  foobar
+  course: n
+  institute: 1
+S-I:
+  student: 1
+  institute: n
+S-C:
+  course: n
+  student: m
+

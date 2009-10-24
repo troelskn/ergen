@@ -1,0 +1,7 @@
+Tool for generating ER diagrams, using graphviz.
+
+Run as:
+
+  cat diagram.txt | ergen | dot -Tpng -Kneato -odiagram.png
+
+See examples for syntax of input.

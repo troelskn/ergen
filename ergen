@@ -1,0 +1,148 @@
+#!/usr/bin/env ruby
+class Entity
+  attr_reader :label, :attributes
+  def initialize(label, attributes = [])
+    @label = label
+    @attributes = attributes
+  end
+  def [](key)
+    @attributes[key]
+  end
+  def []=(key, value)
+    @attributes[key] = value
+  end
+end
+
+class Edge
+  attr_reader :entity, :cardinality
+  def initialize(entity, cardinality)
+    @entity = entity
+    @cardinality = cardinality
+  end
+end
+
+class Relation < Entity
+  attr_reader :left, :right
+  def initialize(label, left, right, attributes = [])
+    super(label, attributes)
+    @left = left
+    @right = right
+  end
+  def edges
+    [@left, @right]
+  end
+end
+
+class Graph < Array
+  def entity_by_name(name)
+    self.find {|e| e.label == name}
+  end
+
+  def entities
+    self.find_all {|e| e.class == Entity }
+  end
+
+  def relations
+    self.find_all {|e| e.class == Relation }
+  end
+end
+
+def quote(s)
+  '"' + s + '"'
+end
+
+def write_graph(graph, style)
+  puts "graph ER {"
+  puts "  // entities"
+  graph.entities.each do |e|
+    puts "  #{quote(e.label)} [#{style[:entity]}];"
+  end
+  puts ""
+  puts "  // relations"
+  graph.relations.each do |e|
+    puts "  #{quote(e.label)} [#{style[:relation]}];"
+  end
+  puts ""
+  puts "  // attributes"
+  graph.each do |e|
+    e.attributes.each do |a|
+      puts "  " + quote([e.label, a].join("-")) + " [label=#{quote(a)},#{style[:attribute]}];"
+    end
+  end
+  puts ""
+  puts "  // edges"
+  graph.each do |entity|
+    entity.attributes.each do |attribute|
+      attr_name = [entity.label, attribute].join("-")
+      puts "  #{quote(attr_name)} -- #{quote(entity.label)} [#{style[:edge]}];"
+    end
+    if entity.respond_to? :edges
+      entity.edges.each do |edge|
+        puts "  #{quote(entity.label)} -- #{quote(edge.entity.label)} [label=#{quote(edge.cardinality)},#{style[:edge]}];"
+      end
+    end
+  end
+  puts "}"
+end
+
+def tokenize(input)
+  result = []
+  buffer = nil
+  input.split(/\n|\r\n/).each do |line|
+    line = line.strip
+    unless line == ""
+      if mm = line.match(/^(.*\w+)\s*:$/)
+        # begin entity/relation
+        if buffer && buffer[:label]
+          result << buffer
+        end
+        buffer = {:label => mm[1]}
+      elsif mm = line.match(/^(.*\w+)\s*:\s*(\w+.*)$/)
+        raise "Parse Error near '#{line}'" unless buffer
+        # relation edge
+        buffer[:edges] = [] unless buffer[:edges]
+        buffer[:edges] << {:name => mm[1], :cardinality => mm[2]}
+      else
+        raise "Parse Error near '#{line}'" unless buffer
+        # attributes
+        buffer[:attributes] = line.split(",").map {|a| a.strip}
+      end
+    end
+  end
+  raise "No input given" unless buffer
+  if buffer[:label]
+    result << buffer
+  end
+  result
+end
+
+def build_graph(tokens)
+  graph = Graph.new
+  tokens.each do |token|
+    unless token[:edges]
+      graph << Entity.new(token[:label], token[:attributes] || [])
+    end
+  end
+  tokens.each do |token|
+    if token[:edges]
+      unless token[:edges].length == 2
+        raise "Illegal number of edges for #{token[:label]}"
+      end
+      left = token[:edges][0]
+      right = token[:edges][1]
+      left_edge = Edge.new(graph.entity_by_name(left[:name]), left[:cardinality])
+      right_edge = Edge.new(graph.entity_by_name(right[:name]), right[:cardinality])
+      graph << Relation.new(token[:label], left_edge, right_edge, token[:attributes] || [])
+    end
+  end
+  graph
+end
+
+style = {
+  :entity => "shape=box,fontsize=12",
+  :attribute => "shape=ellipse,fontsize=8",
+  :relation => "shape=diamond,style=filled,color=lightgrey,fontsize=12",
+  :edge => "len=1.00,fontsize=8"
+}
+g = build_graph(tokenize(STDIN.read))
+write_graph(g, style)
