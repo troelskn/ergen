@@ -113,12 +113,13 @@ def tokenize(input)
       elsif mm = line.match(/^(.*\w+)\s*:\s*(\w+.*)$/)
         raise "Parse Error near '#{line}'" unless buffer
         # relation edge
-        buffer[:edges] = [] unless buffer[:edges]
+        buffer[:edges] ||= []
         buffer[:edges] << {:name => mm[1], :cardinality => mm[2]}
       else
         raise "Parse Error near '#{line}'" unless buffer
         # attributes
-        buffer[:attributes] = line.split(",").map {|a| a.strip}
+        buffer[:attributes] ||= []
+        buffer[:attributes] += line.split(",").map {|a| a.strip}
       end
     end
   end

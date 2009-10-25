@@ -1,0 +1,17 @@
+contact:
+  +id
+  phone_number
+  first_name
+  last_name
+  address_id
+
+address:
+  +address_id
+  street_name
+  street_number
+  coord_x
+  coord_y
+
+has a:
+  contact: n
+  address: 1
